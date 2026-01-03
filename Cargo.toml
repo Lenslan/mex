@@ -8,6 +8,7 @@ regex = "1.12.2"
 walkdir = "2.5.0"
 rayon = "1.11.0"
 pyo3 = { version = "0.27.2", features = ["extension-module"]}
+hashbrown = "0.16.1"
 
 [lib]
 name = "mex"

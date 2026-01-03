@@ -1,4 +1,5 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::VecDeque;
+use hashbrown::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use pyo3::{pyfunction, pymodule, wrap_pyfunction, Bound, PyResult};
@@ -57,40 +58,63 @@ fn extract_instantiated_modules(content: &str) -> Vec<String> {
         .collect()
 }
 
-fn resolve_filelist(top: &str, module_map: &HashMap<String, PathBuf>) -> Vec<PathBuf> {
+fn resolve_filelist(
+    top: &str,
+    module_map: &HashMap<String, PathBuf>,
+) -> Vec<PathBuf> {
     let mut visited_modules = HashSet::new();
     let mut visited_files = HashSet::new();
-    let mut queue = VecDeque::new();
+    let mut filelist = Vec::new();
 
-    queue.push_back(top.to_string());
+    dfs_module(
+        top,
+        module_map,
+        &mut visited_modules,
+        &mut visited_files,
+        &mut filelist,
+    );
 
-    while let Some(module) = queue.pop_front() {
-        if !visited_modules.insert(module.clone()) {
-            continue;
-        }
+    filelist
+}
 
-        let Some(path) = module_map.get(&module) else {
-            continue; // blackbox / 未找到
-        };
+fn dfs_module(
+    module: &str,
+    module_map: &HashMap<String, PathBuf>,
+    visited_modules: &mut HashSet<String>,
+    visited_files: &mut HashSet<PathBuf>,
+    filelist: &mut Vec<PathBuf>,
+) {
+    // 模块级去重
+    if !visited_modules.insert(module.to_string()) {
+        return;
+    }
 
-        if !visited_files.insert(path.clone()) {
-            continue;
-        }
+    let Some(path) = module_map.get(module) else {
+        return; // blackbox / external module
+    };
 
-        let content = fs::read_to_string(path).unwrap_or_default();
-        let sub_modules = extract_instantiated_modules(&content);
+    // 读取文件
+    let content = fs::read_to_string(path).unwrap_or_default();
 
-        for sub in sub_modules {
-            if module_map.contains_key(&sub) {
-                queue.push_back(sub);
-            }
+    // 深度优先解析子模块
+    for sub in extract_instantiated_modules(&content) {
+        if module_map.contains_key(&sub) {
+            dfs_module(
+                &sub,
+                module_map,
+                visited_modules,
+                visited_files,
+                filelist,
+            );
         }
     }
 
-    let mut result: Vec<_> = visited_files.into_iter().collect();
-    result.sort();
-    result
+    // 后序插入，保证子模块在前
+    if visited_files.insert(path.clone()) {
+        filelist.push(path.clone());
+    }
 }
+
 
 #[pyfunction]
 fn get(root: String, top_module: String) -> PyResult<Vec<String>> {
