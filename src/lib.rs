@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use hashbrown::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
@@ -63,15 +62,15 @@ fn resolve_filelist(
     module_map: &HashMap<String, PathBuf>,
 ) -> Vec<PathBuf> {
     let mut visited_modules = HashSet::new();
-    let mut visited_files = HashSet::new();
     let mut filelist = Vec::new();
+    let mut file_index = HashSet::new();
 
     dfs_module(
         top,
         module_map,
         &mut visited_modules,
-        &mut visited_files,
         &mut filelist,
+        &mut file_index,
     );
 
     filelist
@@ -79,38 +78,38 @@ fn resolve_filelist(
 
 fn dfs_module(
     module: &str,
-    module_map: &HashMap<String, PathBuf>,
+    module_map: &HashMap<String,PathBuf>,
     visited_modules: &mut HashSet<String>,
-    visited_files: &mut HashSet<PathBuf>,
     filelist: &mut Vec<PathBuf>,
+    file_index: &mut HashSet<usize>,
 ) {
-    // 模块级去重
     if !visited_modules.insert(module.to_string()) {
         return;
     }
 
     let Some(path) = module_map.get(module) else {
-        return; // blackbox / external module
+        println!("[WARN] Can not find module {}", module);
+        return;
     };
 
-    // 读取文件
     let content = fs::read_to_string(path).unwrap_or_default();
 
-    // 深度优先解析子模块
     for sub in extract_instantiated_modules(&content) {
         if module_map.contains_key(&sub) {
             dfs_module(
                 &sub,
                 module_map,
                 visited_modules,
-                visited_files,
                 filelist,
+                file_index,
             );
         }
     }
 
-    // 后序插入，保证子模块在前
-    if visited_files.insert(path.clone()) {
+
+    let key = path.to_string_lossy().as_ptr() as usize;
+
+    if file_index.insert(key) {
         filelist.push(path.clone());
     }
 }
