@@ -1,5 +1,6 @@
 use hashbrown::{HashMap, HashSet};
 use std::fs;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 use pyo3::{pyfunction, pymodule, wrap_pyfunction, Bound, PyResult};
 use pyo3::prelude::PyModuleMethods;
@@ -81,7 +82,7 @@ fn dfs_module(
     module_map: &HashMap<String,PathBuf>,
     visited_modules: &mut HashSet<String>,
     filelist: &mut Vec<PathBuf>,
-    file_index: &mut HashSet<usize>,
+    file_index: &mut HashSet<u64>,
 ) {
     if !visited_modules.insert(module.to_string()) {
         return;
@@ -107,13 +108,18 @@ fn dfs_module(
     }
 
 
-    let key = path.to_string_lossy().as_ptr() as usize;
+    let key = get_unique_id(path.to_str().unwrap());
 
     if file_index.insert(key) {
         filelist.push(path.clone());
     }
 }
 
+fn get_unique_id(s: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    s.hash(&mut hasher);
+    hasher.finish()
+}
 
 #[pyfunction]
 fn get(root: String, top_module: String) -> PyResult<Vec<String>> {
