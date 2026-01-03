@@ -1,0 +1,14 @@
+[package]
+name = "mex"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+regex = "1.12.2"
+walkdir = "2.5.0"
+rayon = "1.11.0"
+pyo3 = { version = "0.27.2", features = ["extension-module"]}
+
+[lib]
+name = "mex"
+crate-type = ["cdylib"]
