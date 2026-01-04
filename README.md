@@ -8,3 +8,6 @@
 import mex
 file_list = mex.get(hdl_root_dir, top_module_name)
 ```
+
+## todo:
+- [ ] 通过dfs 好像做不到底层模块放到list上方，顶层模块放在list底部，还得再手动调整一下。比如顶层模块a和例化模块b都用到了底层子模块c，可能模块c 就会被放到了模块b的下方。
